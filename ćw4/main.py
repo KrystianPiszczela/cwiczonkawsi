@@ -11,7 +11,7 @@ from snake import Snake, Direction
 
 def main():
     pygame.init()
-    bounds = (300, 300)
+    bounds = (600, 600)
     window = pygame.display.set_mode(bounds)
     pygame.display.set_caption("Snake")
 
