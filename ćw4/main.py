@@ -3,10 +3,14 @@ import os
 import pickle
 import pygame
 import time
+import numpy as np
 
 from food import Food
-from model import game_state_to_data_sample
+from model import game_state_to_data_sample, import_data, split_data
+from model import Kernel, SVM_train_model
 from snake import Snake, Direction
+
+from sklearn.svm import SVC
 
 
 def main():
@@ -19,7 +23,8 @@ def main():
     snake = Snake(block_size, bounds)
     food = Food(block_size, bounds, lifetime=100)
 
-    agent = HumanAgent(block_size, bounds)  # Once your agent is good to go, change this line
+    # agent = HumanAgent(block_size, bounds)  # Once your agent is good to go, change this line
+    agent = BehavioralCloningAgent(block_size, bounds)
     scores = []
     run = True
     pygame.time.delay(1000)
@@ -91,18 +96,59 @@ class HumanAgent:
 
 
 class BehavioralCloningAgent:
-    def __init__(self):
-        raise NotImplementedError()
+    def __init__(self, block_size, bounds, file_path="data/2023-12-06_173416.pickle"):
+        self.block_size = block_size
+        self.bounds = bounds
+        X, y = import_data(file_path)
+        X_test, X_train, y_test, y_train = split_data(X, y)
+        kernel = Kernel.linear()
+        c = 1e-2
+        SVM_tm = SVM_train_model(kernel, c)
+        self.SVM_pm = SVM_tm.train(np.array(X_train), np.array(y_train))
 
     def act(self, game_state) -> Direction:
         """ Calculate data sample attributes from game_state and run the trained model to predict snake's action/direction"""
-        data_sample = game_state_to_data_sample(game_state)
-        raise NotImplementedError()
+        data_sample = game_state_to_data_sample(game_state, self.bounds[0], self.bounds[1], self.block_size)
+        new_direction = self.SVM_pm.predict(data_sample)
+        if new_direction == 0:
+            action = Direction.DOWN
+        elif new_direction == 1:
+            action = Direction.UP
+        elif new_direction == 2:
+            action = Direction.RIGHT
+        elif new_direction == 3:
+            action = Direction.LEFT
+        print(data_sample)
+        return action
 
-    def dump_data(self):
-        pass
+
+class BehavioralCloningAgent2:
+    def __init__(self, block_size, bounds, file_path="data/2023-12-06_173416.pickle"):
+        self.block_size = block_size
+        self.x_bound = bounds[0]
+        self.y_bound = bounds[1]
+        self.data = []
+        X, y = import_data(file_path)
+        self.svm = SVC(C=1e-2, kernel='poly', degree=4)
+        X_test, self.X_train, y_test, self.y_train = split_data(X, y)
+
+    def act(self, game_state) -> Direction:
+        """ Calculate data sample attributes from game_state and run the trained model to predict snake's action/direction"""
+        X_pred = self.game_state_to_data_sample(game_state)
+        X_pred = [X_pred, X_pred]
+        new_direction = self.svm.fit(self.X_train, self.y_train).predict(X_pred[0:1])
+        if new_direction == 2:
+            action = Direction.DOWN
+        elif new_direction == 0:
+            action = Direction.UP
+        elif new_direction == 1:
+            action = Direction.RIGHT
+        elif new_direction == 3:
+            action = Direction.LEFT
+
+        self.data.append((copy.deepcopy(game_state), action))
+        return action
 
 
 if __name__ == "__main__":
     main()
-
