@@ -11,6 +11,7 @@ from model import Kernel, SVM_train_model
 from snake import Snake, Direction
 
 from sklearn.svm import SVC
+from sklearn.gaussian_process.kernels import RBF
 
 
 def main():
@@ -24,7 +25,7 @@ def main():
     food = Food(block_size, bounds, lifetime=100)
 
     # agent = HumanAgent(block_size, bounds)  # Once your agent is good to go, change this line
-    agent = BehavioralCloningAgent(block_size, bounds)
+    agent = BehavioralCloningAgent(block_size, bounds, "data/snakerun5.pickle")
     scores = []
     run = True
     pygame.time.delay(1000)
@@ -101,7 +102,7 @@ class BehavioralCloningAgent:
         self.bounds = bounds
         X, y = import_data(file_path)
         X_test, X_train, y_test, y_train = split_data(X, y)
-        kernel = Kernel.linear()
+        kernel = Kernel.radial_basis()
         c = 1e-2
         SVM_tm = SVM_train_model(kernel, c)
         self.SVM_pm = SVM_tm.train(np.array(X_train), np.array(y_train))
@@ -110,6 +111,7 @@ class BehavioralCloningAgent:
         """ Calculate data sample attributes from game_state and run the trained model to predict snake's action/direction"""
         data_sample = game_state_to_data_sample(game_state, self.bounds[0], self.bounds[1], self.block_size)
         new_direction = self.SVM_pm.predict(data_sample)
+        print(f"{data_sample}, direction:{new_direction}")
         if new_direction == 0:
             action = Direction.DOWN
         elif new_direction == 1:
@@ -134,7 +136,7 @@ class BehavioralCloningAgent2:
 
     def act(self, game_state) -> Direction:
         """ Calculate data sample attributes from game_state and run the trained model to predict snake's action/direction"""
-        X_pred = self.game_state_to_data_sample(game_state)
+        X_pred = game_state_to_data_sample(game_state, self.x_bound, self.y_bound, self.block_size)
         X_pred = [X_pred, X_pred]
         new_direction = self.svm.fit(self.X_train, self.y_train).predict(X_pred[0:1])
         if new_direction == 2:

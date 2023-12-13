@@ -23,9 +23,12 @@ class Kernel():
     def linear():
         return lambda x, y: np.inner(x, y)
 
-    def gaussian(sigma):
+    def gaussian(sigma=5):
         return lambda x, y: \
             np.exp(-np.sqrt(la.norm(x-y) ** 2 / (2 * sigma ** 2)))
+
+    def radial_basis(gamma=10):
+        return lambda x, y: np.exp(-gamma*la.norm(np.subtract(x, y)))
 
 
 class SVM_train_model():
@@ -181,12 +184,15 @@ if __name__ == "__main__":
     # print(game_state_to_data_sample(game_state))
     file_path = "data/2023-12-06_173416.pickle"
     X, y = import_data(file_path)
-    svm = SVC(C=1e-2, kernel='poly', degree=4)
     X_test, X_train, y_test, y_train = split_data(X, y)
-    y_pred = svm.fit(X_train, y_train).predict(X_test)
+    kernel = Kernel.radial_basis()
+    c = 1e-2
+    svm = SVM_train_model(kernel, c)
+    svm.train(np.array(X_train), np.array(y_train))
+    y_pred = svm.predict(X_test)
     correct = 0
     for i in range(len(y_pred)):
-        # print(f"{i}. y_pred={y_pred[i]}, y_test={y_test[i]}")
+        print(f"{i}. y_pred={y_pred[i]}, y_test={y_test[i]}")
         if y_pred[i] == y_test[i]:
             correct += 1
     print(f"{correct}/{len(y_pred)} = {correct*100/len(y_pred)}%")
